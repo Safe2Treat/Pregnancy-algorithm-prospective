@@ -25,3 +25,5 @@ Run the Algorithm:
 - `Step12___clean_pregnancies.sas` -- This implements a series of data cleaning steps for pregnancies that are too long, have theri indexing prenatal encounter too close to their LMP, or that overlap with other pregnancies. This requires the getGA macro encoded in the SAS file getga.sas. This is MODIFIED from the version of this macro encoded in `Step11_GestationalAge_macro.sas`.
 
 Data are accessible after payment to Merative with an appropriate data use agreement. All analyses were approved by UNC's Institutional Review Board. No data are uploaded to this repository.
+
+Given the important shifts in legislation and policy surrounding induced abortion in the U.S., we have modified this code such that it does not identify induced abortions specifically. Instead, they are identified as "Unspecified Abortions". As such, this category can include induced abortionsn as well as spontaneous abortions where the coding documentation did not clearly indicate that it was spontaneous. To identify induced abortions, users must modify the pregnancy outcome codelist to determine which codes they believe identify an induced abortion specifically.
