@@ -5,6 +5,13 @@ PURPOSE: The purpose of this program is to clean the pregnancy cohort that we de
 	
 
 Date: 12.19.2024
+
+UDPATES:
+
+- 07.25.2025: Changed overlap to include those pregnancies that are too close for biologic plausibility. These time frames were
+chosen based upon tables in the algorithm documentation.
+- 08.19.2025: Identified and fix bug. Previously MLS was excluded from the list of pregnancy outcomes that were used to calculate 
+num_preg_w_deldx and num_del.
 ********************************************************************************************************************************************/
 
 
@@ -931,6 +938,8 @@ These are ordered according to dt_LMP
 /*
 MACRO: clean_overlap
 PURPOSE: to address those pregnancies that overlap with one another within a person
+-- REVISED 08.07.2025 -- Overlap is now defined as true overlap OR too close for biologic plausibility. Code
+	was updated to reflect this change.
 
 INPUTS:
 INPUT_DATA -- Input pregnancy dataset
@@ -943,10 +952,10 @@ Testing:
 
 %macro clean_overlap(INPUT_DATA=, OUTPUT_DATA=, LMPINDEX=);
 
-	%let num_preg_overlap = 1;
-	%let num = 0;
+	%let num_preg_overlap = 1; %*Start the macro by indicating that there is at least 1 overlapping or too close pregnancy. Start number does not matter so long as it is greater than 0.;
+	%let num = 0; %*Start the evaluation round at 0;
 	
-	%do %until(&num_preg_overlap = 0); %*Repeat this macro until there are no overlapping pregnancies.;
+	%do %until(&num_preg_overlap = 0); %*Repeat this macro until there are no overlapping or too close pregnancies.;
 	
 		%let num = %eval(&num +1); 
 		%put Round: &num;
@@ -954,53 +963,116 @@ Testing:
 		%if &num=1 %then %do;
 			data _pregnancies;
 			set &input_data;
+				eval = 0; %*CDL: ADDED 8.7.2025 -- Create an indicator for not having been evaluated yet. This is important for LMP too close and deliveries.;
+
+				%*CDL: ADDED 8.7.2025 -- Create an indicator that the pregnancy outcome is a delivery;
+				if preg_outcome_clean in ('LBS' 'LBM' 'UDL' 'SB' 'MLS') then delivery = 1;
+					else delivery = 0;
 			run;
 		%end;
 		%else %do;
 			data _pregnancies;
 			set _pregnancies_final_%eval(&num-1);
+
+				%*CDL: ADDED 8.7.2025 -- Create an indicator that the pregnancy outcome is a delivery;
+				if preg_outcome_clean in ('LBS' 'LBM' 'UDL' 'SB' 'MLS') then delivery = 1;
+					else delivery = 0;
+
 			run;
 		%end;
 
 		%*************
 			STEP 1: Identify those pregnancies that have any amount of overlap.;
+
+		%*CDL: REVISED 07.25.2025 to define overlap as pregnancies that are too close for biologic plausibility;
 	
-		%*Create a variable COUNT that identifies those pregnancies that overlap within a person;
+		%*Create a variable COUNT that identifies those pregnancies that overlap or are too close for biologic plausibility within a person;
 		proc sort data=_pregnancies;
-			by enrolid dt_lmp;
+			by enrolid dt_lmp dt_gapreg; %*CDL: 08.07.2025 -- ADDED dt_gapreg for the case where the LMP is the same.;
 		run;
 		data _pregnancies2;
 		set _pregnancies;
 			format last_end MMDDYY10.;
-			by enrolid dt_lmp;
+			by enrolid dt_lmp dt_gapreg; %*CDL: 08.07.2025 -- ADDED dt_gapreg for the case where the LMP is the same.;
 			retain count;
 	
-			last_id = lag1(enrolid);
+			%*Identify the information pertaining to the prior pregnancy in the dataset;
+			last_id = lag1(patient_deid); %*CDL: 07.25.2025 -- CHANGED from enrolid for consistency but should cause no changes since patient_deid = enrolid;
 			last_end = lag1(dt_gapreg);
 			last_lmp = lag1(dt_lmp);
+			last_outc = lag1(preg_outcome_clean); %*CDL: ADDED 07.25.2025;
+			last_eval = lag1(eval); %*CDL: ADDED 08.07.2025. Indicator that the pregnancy was previously evaluated.;
+
+			%*CDL: ADDED 07.25.2025 -- To determine if the outcomes are too close for biologic plausibility. Preg_outcome_clean refers to the
+			pregnancy outcome of the second pregnancy, and last_outc refers to the outcome of the first pregnancy. 
+			(See Table in the Cleaning Derived Pregnancies Word file);
+			if last_id = patient_deid then do;
+				if preg_outcome_clean in ('LBS' 'LBM' 'UDL' 'SB' 'MLS') then do;
+					if last_outc in ('LBS' 'LBM' 'UDL' 'SB' 'MLS') and dt_gapreg - last_end < 168 then outc_too_close = 1;
+						else if last_outc = 'EM' and dt_gapreg - last_end < 154 then outc_too_close = 1;
+						else if last_outc in('UAB' 'IAB' 'SAB') and dt_gapreg - last_end < 140 then outc_too_close = 1;
+						else outc_too_close = 0;
+				end;
+					else if preg_outcome_clean in ('UAB' 'IAB' 'SAB') then do;
+						if last_outc in ('LBS' 'LBM' 'UDL' 'SB' 'MLS') and dt_gapreg - last_end < 70 then outc_too_close = 1;
+							else if last_outc = 'EM' and dt_gapreg - last_end < 56 then outc_too_close = 1;
+							else if last_outc in ('UAB' 'IAB' 'SAB') and dt_gapreg - last_end < 42 then outc_too_close = 1;
+							else outc_too_close = 0;
+					end;
+					else if preg_outcome_clean = 'EM' then do;
+						if last_outc in ('LBS' 'LBM' 'UDL' 'SB' 'MLS') and dt_gapreg - last_end < 70 then outc_too_close = 1;
+							else if last_outc = 'EM' and dt_gapreg - last_end < 56 then outc_too_close = 1;
+							else if last_outc in ('UAB' 'IAB' 'SAB') and dt_gapreg - last_end < 42 then outc_too_close = 1;
+							else outc_too_close = 0;
+					end;
+					else if preg_outcome_clean = 'UNK' then outc_too_close = 0;
+			end;
+				else outc_too_close = 0;
+
+
+			%*CDL: ADDED 07.25.2025 -- To determine if the LMP of the current pregnancy is too close to the outcome for
+			the prior pregnancy.;
+			if last_id = patient_deid then do;
+				if last_outc in ('LBS' 'LBM' 'SB' 'UDL' 'MLS') and dt_lmp - last_end < 28 then lmp_too_close = 1;
+					else if last_outc in ('EM' 'IAB' 'SAB' 'UAB' 'UNK') and dt_lmp - last_end < 14 then lmp_too_close = 1;
+					else lmp_too_close = 0;
+			end;
+				else lmp_too_close = 0;
 	
 			if first.enrolid then do;
 				count = 1;
 				overlap = .;
 				lmp_overlap = .;
 			end;
-				else if enrolid = last_id and dt_lmp <= last_end then do;
-					count = count;
+				%*CDL: MODIFIED 07.25.2025 -- To include those pregnancies that are too close for biologic plausibility in 
+				the marker for overlap -- added second and third OR options in the AND statement;
+				else if enrolid = last_id and (dt_lmp <= last_end OR outc_too_close = 1 OR lmp_too_close = 1) then do;
+					count = count; %*In the same series of overlapping pregnancies, so retain the same count value.;
 					overlap = abs(last_end - dt_lmp);
 					lmp_overlap = abs(last_lmp - dt_lmp);
 				end;
+				%*New potential series of overlapping pregnancies;
 				else do;
 					count = count + 1;
 					overlap = .;
 					lmp_overlap = .;
 				end;
-		  run;
+
+		 run;
 
 		%*Create the variable num_preg which counts the number of pregnancies within each COUNT value. This will be used
 		to identify the number of pregnancies that overlap;
+		%*CDL: Added 8.07.2025 -- Count the number of evaluated pregnancies within the series of overlap. This
+		is important because deliveries that are far enough apart for biologic plausibility may have LMPs too close
+		because the LMP of the second is set as 1 day after the first pregnancy-s outcome. (See documentation for additional detail.)
+		We do not want to create an infinite loop.;
 		proc sql;
 			create table _pregnancies3 as
-			select distinct patient_deid, enrolid, idxpren, dt_lmp, dt_gapreg, count, count(*) as num_preg
+			select distinct patient_deid, enrolid, idxpren, dt_lmp, dt_gapreg, count, count(*) as num_preg,
+				sum(eval > 0) as num_preg_eval, /*Number of pregnancies in the series that have been evaluated already*/
+				sum(delivery > 0) as num_delivery, /*Number of pregnancies in the series that are deliveries and so may be too close despite cleaning*/
+				sum(outc_too_close > 0) as num_outc_too_close, /*Number of pregnancies with outcomes that are too close for biologic plausibility*/
+				sum(last_id = patient_deid and dt_lmp <= last_end) as truly_overlap
 			from _pregnancies2
 			group by enrolid, count
 			;
@@ -1010,22 +1082,37 @@ Testing:
 		proc sql noprint;
 			select count(*) into :num_preg_orig from _pregnancies;
 			select count(*) into :num_preg_nooverlap from _pregnancies3 where num_preg = 1;
-			select count(*) into :num_preg_overlap from _pregnancies3 where num_preg > 1;
+			select count(*) into :num_preg_overlap from _pregnancies3 where num_preg > 1 and
+									/*Not all of the included pregnancies are evaluated deliveries*/
+									not (num_preg = num_preg_eval and num_preg_eval = num_delivery and num_outc_too_close = 0 and truly_overlap = 0); /*CDL: 08.19.2025 -- ADDED truly_overlap=0, accidental omission previously*/
+				/*CDL: 8.7.2025 -- ADDED the and statement in the above because do not want to consider too close among evaluated pregnancies
+				that were deliveries*/
+			/*CDL: 08.08.2025 -- ADDED this count*/
+			select count(*) into :num_pregoutc_too_close from _pregnancies3 where num_outc_too_close > 0;
 			quit;
 		%put Number of pregnancies in the original cohort: &num_preg_orig;
 		%put Number of pregnancies with no overlap: &num_preg_nooverlap;
-		%put Number of pregnancies with overlap: &num_preg_overlap;		
+		%put Number of pregnancies with overlap or too close: &num_preg_overlap;	
+		%put Number of pregnancies with outcomes that are too close: &num_pregoutc_too_close;
 		
 		%*Subset to overlapping pregnancies.;
+		%*CDL: ADDED 8.7.2025 -- Added not statement to exclude those pregnancies where all pregnancies in the overlapping
+		series of pregnancies have been evaluated and are deliveries but their outcomes are at least 168 days apart.
+		CDL: ADDED 08.08.2025 -- ADDED num_pregoutc_too_close = 0 to ensure that there are no deliveries with outcomes
+		too close for biologic plausbility left. If there, they should still be evaluated;
 		proc sql;
 			create table _preg_overlap0 as
 			select distinct * 
 			from _pregnancies2 
-			where idxpren in (select distinct idxpren from _pregnancies3 where num_preg > 1)
+			where idxpren in (select distinct idxpren 
+								from _pregnancies3 
+								where num_preg > 1 and 
+									NOT (num_preg = num_preg_eval and num_preg_eval = num_delivery and num_outc_too_close = 0 and truly_overlap = 0)
+								)
 			;
 			quit;
 			
-		%*Count the number of pregnancies within each series of overlaps;
+		%*Join back the number of pregnancies within each series of overlaps to the subsetted cohort;
 		proc sql;
 			create table _preg_overlap0_2 as
 			select distinct a.*, b.num_preg
@@ -1035,30 +1122,76 @@ Testing:
 			;
 			quit;
 			
-		%***Subset to the FIRST two overlapping pregnancies.;
+		%***Subset to the FIRST two overlapping or too close pregnancies. 
+		CDL: 08.07.2025  However, if the first two are evaluated deliveries that are too close BUT NOT OVERLAPPING, then we want to look at the next two, etc.
+		Essentially, we want to move in a pairwise fashion down the rows until we come to a pair where both are not evaluated deliveries.
+		-- REVISED THE SECTION BELOW TO REACH THE STATED GOAL.;
 
-		%*Create a variable - ROW - which indicates the order of the pregnancy in time BASED UPON LMP.;
 		proc sort data=_preg_overlap0_2;
-			by enrolid count dt_lmp;
+			by patient_deid count dt_lmp dt_gapreg;  %*CDL: 08.07.2025 -- ADDED dt_gapreg for the case where the LMP is the same.;
 		run;
-		data _preg_loop2;
+		%*Add row numbers within each series of overlapping pregnancies;
+		data _preg_overlap0_2_1;
 		set _preg_overlap0_2;
-			by enrolid count dt_lmp;
-			retain row;
-
-			if first.count then row = 1;
-				else row = row + 1;
+			by patient_deid count dt_lmp dt_gapreg; %*CDL: 08.07.2025 -- ADDED dt_gapreg;
+			if first.count then row_id = 1;
+				else row_id + 1;
 		run;
-		%*Subset to the first two pregnancies in each pair. Those excluded will be restacked later.;
-		data _preg_overlap;
-		set _preg_loop2;
-			where row <= 2;
-		run;
-/*		%*Output a dataset of the overlapping pregnancy outcomes;*/
-/*		proc freq data=_preg_overlap noprint;*/
-/*			table preg_outcome_clean / missing out=ana.preg_outc_overlap_&lmpindex._&num;*/
-/*		run;*/
 
+
+		%*Create a dataset with flags for shifting logic;
+		data flagged_1;
+		set _preg_overlap0_2_1;
+
+			retain eval1 del1 eval2 del2 row_id1 row_id2;
+
+			by patient_deid count dt_lmp dt_gapreg; %*CDL: 08.07.2025 -- ADDED dt_gapreg for the case where the LMP is the same.;
+
+			/* Initialize */
+		    if first.count then do;
+		        eval1 = .; del1 = .;
+		        eval2 = .; del2 = .;
+		        row_id1 = .; row_id2 = .;
+		    end;
+
+			/* Shift the window */
+		    eval1 = eval2; del1 = del2; row_id1 = row_id2;
+		    eval2 = eval;  del2 = delivery; row_id2 = row_id;
+
+			%*Delete the first row -- all person-level ids have multiple pregnancies in this dataset;
+			if missing (eval1) then delete; 
+
+			%*Delete those rows where the 1st and 2nd pregnancies are evaluated deliveries that do NOT truly overlap and 
+			the outcome dates are sufficiently far apart for biologic plausibility
+
+			--If both pregnancies have (1) been evaluated, (2) are deliveries, (3) are not truly overlapping, and (4)
+				are sufficiently far apart for biologic plausibility, we do not want to re-evaluate them. They will not
+				be revised. As a result, we want to delete that row and move on to the next pair of pregnancies;
+			if eval1 = 1 and del1 = 1 and eval2 = 1 and del2 = 1 and dt_lmp > last_end and dt_gapreg - last_end >= 168 then delete;
+
+		run;
+
+		/*Now select only the first row from the series of overlapping pregnancies.*/
+		proc sort data=flagged_1;
+			by patient_deid count dt_lmp dt_gapreg;
+		run;
+		data flagged;
+		set flagged_1;
+			by patient_deid count dt_lmp dt_gapreg;
+
+			if first.count then output;
+		run;
+
+		/* Step 3: Merge back to get the desired two rows */
+		proc sql;
+		    create table _preg_overlap as
+		    select distinct a.*
+		    from _preg_overlap0_2_1 as a
+		    inner join flagged as f
+		    on a.patient_deid = f.patient_deid and
+		       (a.row_id = f.row_id1 or a.row_id = f.row_id2)
+		    order by patient_deid, dt_lmp;
+			quit;
 
 		%*Grab the pregnancies that are not going to be evaluated in this round. They will be stacked back later.;
 		proc sql;
@@ -1079,7 +1212,8 @@ Testing:
 				else outc_quality = 4;
 		run;		
 
-		%*Create an indicator as to whether there is a Z3A code.;
+		%**Create an indicator as to whether there is a Specific gestational age (mostly Z3A.xx) code at
+		any point during the pregnancy - between indexing prenatal encounter and outcome date.;
 		proc sql;
 			create table _preg_overlap3 as
 			select distinct aa.*, bb.numZ3A
@@ -1087,7 +1221,9 @@ Testing:
 			left join (select distinct a.patient_deid, a.idxpren, count(distinct enc_date) as numZ3A
 						from _preg_overlap as a
 						left join temp.gestagepren (where = (code_hierarchy = "Specific gestational age")) as b
-						on a.patient_deid=b.patient_deid and a.dt_indexprenatal <= b.enc_date <= a.dt_GApreg
+						on a.patient_deid=b.patient_deid and a.dt_indexprenatal <= b.enc_date <= a.dt_GApreg + 7
+								/*CDL: modified 08.07.2025 to include up to 7 days after the outcome date since could still
+								assign gestational age at outcome date*/
 						group by a.patient_deid, a.idxpren) as bb
 			on aa.patient_deid=bb.patient_deid and aa.idxpren=bb.idxpren
 			;
@@ -1097,7 +1233,7 @@ Testing:
 		proc sql;
 			create table _pair_eval_summary as
 			select distinct patient_deid, enrolid, idxpren, dt_indexprenatal, dt_gapreg, dt_lmp, count, preg_outcome_clean, 
-					num_preg, outc_quality, numZ3A,
+					num_preg, outc_quality, numZ3A, 
 					sum(numZ3A > 0) as num_preg_w_Z3A, max(lmp_overlap) as max_lmp_overlap
 			from _preg_overlap3 
 			group by enrolid, count
@@ -1107,37 +1243,6 @@ Testing:
 		%******
 			STEP 2: Implement hierarchies for all the overlapping pregnancies.;
 
-/*		%*Output data to assess what pregnancies were compared in this group;*/
-/*		%*Get counts of the pairwise comparisons*/
-/*		We want the outcomes compared, the outcome quality, and the numZ3A codes;*/
-/*		proc sort data=_pair_eval_summary out=pairwise;*/
-/*			by enrolid count dt_lmp;*/
-/*		run;*/
-/*		data ana.pairwise_outc_round&num._&lmpindex ;*/
-/*		    set pairwise;*/
-/*		    by enrolid count dt_lmp;*/
-/*		    retain preg_outcome_rolled outc_info_rolled num_specificGA_rolled;*/
-/*		    */
-/*		    /* Initialize the combined variable at the first occurrence of each group */*/
-/*		    if first.count then do;*/
-/*				preg_outcome_rolled = preg_outcome_clean;*/
-/*				outc_info_rolled = strip(put(outc_quality, best.));*/
-/*				num_specificGA_rolled = strip(put(numZ3A, best.));;*/
-/*			end;*/
-/*		    else do;*/
-/*				preg_outcome_rolled = catx('-', preg_outcome_rolled, preg_outcome_clean);*/
-/*				outc_info_rolled = catx('-', outc_info_rolled, outc_quality);*/
-/*				num_specificGA_rolled = catx('-', num_specificGA_rolled, numZ3A);*/
-/*			end;*/
-/*		    */
-/*		    /* Output only at the last occurrence of each group */*/
-/*		    if last.count then output;*/
-/*		    */
-/*		    keep enrolid count preg_outcome_rolled outc_info_rolled num_specificGA_rolled; */
-/*		run;*/
-;;;
-
-
 		%*First, define the necessary variables to implement the hierarchies.;
 		%*We need to know (in hierarchical order):
 			(1) If at least 1 pregnancy in the pair has a procedure code
@@ -1146,18 +1251,20 @@ Testing:
 			(4) If at least 1 pregnancy is an abortion based on RX code
 			(5) If at least 1 pregnancy is defined via diagnosis codes
 			(6) If both have UNK outcomes - rederive
-			;
+			;;;
+
 		proc sql;
 			create table _pair_eval_nolmp2 as
-			select distinct *, sum(outc_quality = 1) as num_preg_w_proc, sum(preg_outcome_clean in ('LBS','LBM','SB','UDL') and outc_quality = 3) as num_preg_w_deldx,
+			select distinct *, sum(outc_quality = 1) as num_preg_w_proc, sum(preg_outcome_clean in ('LBS','LBM','SB','UDL','MLS') and outc_quality = 3) as num_preg_w_deldx, /*CDL: 08.19.2025 ADDED MLS*/
 				sum(preg_outcome_clean in ('SAB','IAB','UAB') and outc_quality = 2) as num_preg_w_aborrx, sum(outc_quality = 3) as num_preg_w_dx,
-				sum(preg_outcome_clean = 'UNK') as num_preg_w_unk, sum(preg_outcome_clean in ('LBS','LBM','SB','UDL')) as num_del
+				sum(preg_outcome_clean = 'UNK') as num_preg_w_unk, sum(preg_outcome_clean in ('LBS','LBM','SB','UDL','MLS')) as num_del /*CDL: 08.19.2025 ADDED MLS*/
 			from _pair_eval_summary
 			group by patient_deid, enrolid, count
 			;
 			quit;
 
-		%*First, evaluate if those with two deliveries are sufficiently far apart;
+		%*First, evaluate how far apart pregnancy outcome dates are. This will be used to evaluate if two deliveries
+			are sufficiently far apart for biologic plausibility;
 		proc sort data=_pair_eval_nolmp2;
 			by patient_deid enrolid count dt_gapreg;
 		run;
@@ -1197,12 +1304,14 @@ Testing:
 		
 
 		%*Delete unnecessary datasets for working memory;
-		proc datasets gennum=all;
+		proc datasets gennum=all noprint;
 			delete _pair_eval_nolmp _pair_eval_nolmp2 _pair_eval_nolmp2_3;
 		run;
 
 		%**********
-			Deal with those where there are two deliveries and both are biologically plausible;
+			Deal with those where there are two deliveries and both are biologically plausible
+
+			CDL: ADDED 08.07.2025 -- If not truly overlapping, then do NOT revise the LMP of the second pregnancy;
 
 		proc sort data=_pair_eval_nolmp3; 
 			by enrolid count dt_gapreg;
@@ -1214,7 +1323,7 @@ Testing:
 
 			last_outc = lag1(dt_gapreg);
 
-			if last.count then dt_lmp = last_outc + 1;
+			if last.count AND (dt_LMP <= last_outc) then dt_lmp = last_outc + 1; %*CDL: ADDED the AND statement on 08.07.2025 to only revise if overlapping;
 				else dt_lmp = dt_lmp;
 
 			drop last_outc;
@@ -1547,18 +1656,18 @@ Testing:
 			create table _evaluated_&num as
 			select distinct a.patient_deid, a.enrolid, a.idxpren, 
 					case when missing(c.idxpren) then b.dt_indexprenatal else c.dt_indexprenatal end as dt_indexprenatal format=MMDDYY10. length=8,
-					/*CDL: MODIFIED becuase it was not carrying over the updated outcome date - 2.21.2025*/
+					/*CDL: MODIFIED because it was not carrying over the updated outcome date - 2.21.2025*/
 /*					a.dt_gapreg, */
 					case when missing(c.idxpren) then b.dt_gapreg else c.dt_gapreg end as dt_gapreg format=MMDDYY10. length=8,
 					case when missing(c.idxpren) then b.dt_lmp else c.dt_lmp end as dt_lmp format=MMDDYY10. length=8,
 					a.count, a.preg_outcome_clean,
 					a.num_preg, a.outc_quality, a.numZ3A, a.num_preg_w_Z3A, a.max_lmp_overlap, a.num_preg_w_proc, a.num_preg_w_deldx,
-					a.num_preg_w_aborrx, a.num_preg_w_dx, a.num_preg_w_unk, a.group, a.clean
+					a.num_preg_w_aborrx, a.num_preg_w_dx, a.num_preg_w_unk, a.group, a.clean,
+					1 as eval /*CDL: 08.07.2025 -- ADDED indicator for being evaluated already - eval*/
 			from _stack1 as a
 			left join _before as b
 			on a.patient_deid=b.patient_deid and a.idxpren=b.idxpren
 			left join (select distinct * from _preg_stack1_2 where group = "Two deliveries") as c
-/*			left join (select distinct * from _preg_stack1_2 where idxpren in (select distinct idxpren from _stack1 where clean = "Two deliveries")) as c*/
 			on a.patient_deid=c.patient_deid and a.idxpren=c.idxpren
 			;
 			quit;
@@ -1676,19 +1785,13 @@ INPUTS:
 - input - pregnancy dataset from the prior algorithm steps
 - output - name and library of output dataset
 - lmpindex - assumed gestational age at the indexing prenatal encounter
+;
 
-%let input=pregnancies_alg
+/*Testing:
+%let input=pregnancies_alg;
 %let lmpindex = 63;
+*/
 
-/*%*Code to confirm that all instances of indexing prenatal claims occurred among pregnancies with known outcomes.;*/
-/*data test;*/
-/*set out.pregnancy_lmp_simp_all_clean;*/
-/*	where dt_indexprenatal > dt_gapreg;*/
-/*run;*/
-/*proc freq data=test;*/
-/*	table preg_outcome_clean / missing;*/
-/*run;*/
-/*%*Confirmed in 1 percent sample;*/
 
 
 %macro reassign_lmps(input=, output=, lmpindex=63);
@@ -1727,11 +1830,37 @@ INPUTS:
 	%*Some pregnancies overlap with others. That is dealt with below;
 	%clean_overlap(INPUT_DATA=_before_index, OUTPUT_DATA=_pregnancies_clean, LMPINDEX=&lmpindex);
 
+	%*CDL: ADDED 08.11.2025 -- Some pregnancies- indexing prenatal claims were no their first PNC claim between 28 days gestation and 
+	the otucome date. This might have occurred because of surrounding revised pregnancies that didnt cause a subsequent pregnancy-
+	indexing prenatal to be fixed. This section was added to revise their indexing prenatal claim date;
+
+	%*Identify their first PNC date;
+	proc sql;
+		create table _first_pnc as
+		select distinct patient_deid, idxpren, min(enc_date) as dt_firstpnc 
+		from (select a.patient_deid, a.idxpren, b.enc_date
+				from _pregnancies_clean as a
+				left join out.codeprenatal_meg1_dts as b
+				on a.patient_deid=b.patient_deid and a.dt_lmp + 28 <= b.enc_date <= a.dt_gapreg)
+		group by patient_deid, idxpren
+		;
+		quit;
+
+	%*Merge dt_firstpnc onto the dataset;
+	proc sql;
+		create table _pregnancies_clean2 as
+		select a.*, b.dt_firstpnc
+		from _pregnancies_clean as a
+		left join _first_pnc as b
+		on a.patient_deid = b.patient_deid and a.idxpren = b.idxpren
+		;
+		quit;
+
 	*Output the final pregnancy cohort. Subset to those pregnancies with
 	LMPs within the relevant window;
 	data &output; 
-	set _pregnancies_clean; 
-		format dt_LMP date9.;
+	set _pregnancies_clean2; 
+		format dt_LMP date9. dt_firstpnc date9.;
 	run;
 
 /*	%*Output counts;*/
@@ -1755,7 +1884,14 @@ INPUTS:
 *Now, actually clean the pregnancies. Wrapped in a loop so that we do not have to write it up for each algorithm.
 This outputs one long, stacked dataset.;
 
+/*
+%let pregnancies = out.pregnancy_lmp_simp_all;
+%let a=1;
+*/
+
 %let algorithm=%str(7-1 7-2 7-3 7-4 30-1 30-2 30-3 30-4);
+/*%let algorithm=%str(7-1 7-2);*/
+
 
 %macro clean(pregnancies=out.pregnancy_lmp_simp_all, output_pregnancies=out.pregnancy_lmp_simp_all_clean);
 
@@ -1795,7 +1931,48 @@ This outputs one long, stacked dataset.;
 
 
 
+/*proc freq data=temp.preg_lmp_simp_all_clean_orig;*/
+/*	table preg_outcome_clean / missing;*/
+/*run;*/
+/**/
+/**/
+/*%*On the original data after revising how we define overlap;*/
+/*proc freq data=temp.preg_lmp_simp_all_origov;*/
+/*	table preg_outcome_clean / missing;*/
+/*run;*/
+/**/
+/**/
+/*%*On the revised data with the revised overlap definition;*/
+/*proc freq data=temp.preg_lmp_simp_all_clean;*/
+/*	table preg_outcome_clean / missing;*/
+/*run;*/
+/**/
+/*%*Look at GA distribution at indexing PNC;*/
+/**/
+/*data test;*/
+/*set temp.preg_lmp_simp_all_clean;*/
+/*	*/
+/*	ga_index = dt_indexprenatal - dt_lmp;*/
+/**/
+/*	ga_index_week = floor(ga_index / 7);*/
+/**/
+/*run;*/
+/**/
+/*proc freq data=test (where = (dt_indexprenatal ne .));*/
+/*	table ga_index_week / missing;*/
+/*run;*/
 
+
+
+
+
+
+
+
+
+/*proc freq data=out.pregnancy_lmp_simp_all_clean;*/
+/*	table preg_outcome_clean / missing;*/
+/*run;*/
 
 /**Look at the pregnancies to make sure that there are no unreasonable values;*/
 /*data test;*/
@@ -1807,4 +1984,3 @@ This outputs one long, stacked dataset.;
 /*	class preg_outcome_clean;*/
 /*	var ga_length;*/
 /*run;*/
-
