@@ -2,9 +2,9 @@
 
 The code provided in this repository was constructed to identify a cohort of pregnancies prospectively from MarketScan claims data. **Go to the Wiki page for detailed documentation for implementing this algorithm.**
 
-All of the SAS files are extensively commented to facilitate use, but I provide a description below for getting started. This project was conducted on a remote server through a local interface. Some lines of coded were included to create the connection between the local SAS session and remote server. This led to some lines that needed to be run locally, though the majority were run directly to the server. This should be indicated in the files. These programs assume that all SAS files are saved in the same location.
+All of the SAS files are extensively commented to facilitate use, but we provide a description below for getting started. This project was conducted on a remote server through a local interface. Some lines of coded were included to create the connection between the local SAS session and remote server. This led to some lines that needed to be run locally, though the majority were run directly to the server. This should be indicated in the files. These programs assume that all SAS files are saved in the same location.
 
-I have provided extensive documentation on the algorithm, its assumptions, and details on the functionality intended by the programs in two Word files provided on the Wiki page.
+Documentation on the algorithm, its assumptions, and details on the functionality intended by the programs is provided on the Wiki page.
 1. `Algorithm Documentation - User Guide.docx` - This file provides a detailed overview of the algorithm, the program files, inputs and outputs, and what the programs are doing. The end result of this file is a pregnancy cohort that may have pregnancies that are too long, have unreasonable indexing prenatal claims, or overlap with other pregnancies.
 2. `Cleaning Derived Pregnancies.docx` - This file provides an overview of our logic in cleaning the pregnancies, including references. This was implemented after the rest of the algorithm.
 
@@ -26,4 +26,4 @@ Run the Algorithm:
 
 Data are accessible after payment to Merative with an appropriate data use agreement. All analyses were approved by UNC's Institutional Review Board. No data are uploaded to this repository.
 
-Given the important shifts in legislation and policy surrounding induced abortion and reproductive freedom/autonomy in the U.S., we have modified this code such that it does not identify induced abortions specifically. Instead, they are identified as "Unspecified Abortions". As such, this category can include induced abortionsn as well as spontaneous abortions where the coding documentation did not clearly indicate that it was spontaneous. To identify induced abortions, users must modify the pregnancy outcome codelist to determine which codes they believe identify an induced abortion specifically.
+Given the important shifts in legislation and policy surrounding induced abortion and reproductive freedom/autonomy in the U.S., we have modified this code such that it does not uniquely identify induced abortions. Instead, they are identified as "Unspecified Abortions". As such, this category can include induced abortionsn as well as spontaneous abortions where the coding documentation did not clearly indicate that it was spontaneous. To identify induced abortions, users must modify the pregnancy outcome codelist to determine which codes they believe identify an induced abortion specifically.
