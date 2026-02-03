@@ -1,13 +1,23 @@
-on: push
+on: 
+  push:
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Send repo to Dataverse 
+      - name: Test Dataverse Uploader Action
+        # You may pin to the exact commit or the version.
+        # uses: IQSS/dataverse-uploader@d7b33bc57798c540b79aa67bc2e477abe7fca952
         uses: IQSS/dataverse-uploader@v1.7
         with:
+          # dataverse personal access token
           DATAVERSE_TOKEN: ${{ secrets.DATAVERSE_TOKEN }}
-          DATAVERSE_SERVER: https://dataverse.unc.org
-          DATAVERSE_DATASET_DOI: doi:10.15139/S3/02UAIN
-          DELETE: False
-          PUBLISH: False
+          # dataverse server
+          DATAVERSE_SERVER: https://dataverse.unc.edu
+          # existing dataverse dataset doi
+          DATAVERSE_DATASET_DOI: https://doi.org/10.15139/S3/02UAIN
+          # delete all files before upload
+          DELETE: False # optional, default is true
+          # publish after upload
+          PUBLISH: True # optional, default is false
