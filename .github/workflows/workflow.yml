@@ -6,7 +6,7 @@ jobs:
       - name: Send repo to Dataverse 
         uses: IQSS/dataverse-uploader@v1.7
         with:
-          DATAVERSE_TOKEN: ${{secrets.DATAVERSE_TOKEN}}
+          DATAVERSE_TOKEN: ${{ secrets.DATAVERSE_TOKEN }}
           DATAVERSE_SERVER: https://dataverse.unc.org
           DATAVERSE_DATASET_DOI: doi:10.15139/S3/02UAIN
           GITHUB_DIR: data
