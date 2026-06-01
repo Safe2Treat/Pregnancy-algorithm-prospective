@@ -58,7 +58,7 @@ This will need to be modified if implemented in a different folder.
 *Run setup macro and define libnames;
 options sasautos=(SASAUTOS "/local/projects/marketscan_preg/raw_data/programs/macros");
 /*change "saveLog=" to "Y" when program is closer to complete*/
-%setup(sample= random1pct, programname=Step0_prep_importmarchdata_MarketScan, savelog=Y);
+%setup(sample= full, programname=Step0_prep_importmarchdata_MarketScan, savelog=Y);
 
 options mprint;
 

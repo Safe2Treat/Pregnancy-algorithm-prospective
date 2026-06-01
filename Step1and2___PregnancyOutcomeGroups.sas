@@ -128,7 +128,6 @@ format file locally, not on the remote submit.;
 
 
 
-
 /*****************************************************************************
 
 					02 - GET THE OUTCOMES SOURCE DATAFILES
@@ -299,13 +298,14 @@ each specified gap between encounters to define a pregnancy outcome group;
 
 **Gap = 7 days;
 %Runalg(7);
-/*Delete unnecessary work datasets to keep memory clean*/
+*Delete unnecessary work datasets to keep memory clean;
 proc datasets library=work memtype=data nolist;
 	delete getdate: nodt: outcomegroupsrow_7 outcomegroups7 outcomegroup_addl_7 
 			outcomesbygroup2_7 outcomesbygroup_7 conc_outcomegroups_7
 			Conc_outcomegroups_7disc Disc_outcomegroups_7 Disc_outcomegroups_7_int_alg3
 			Disc_outcomegroups_7_int_alg4;
-run; quit;
+run; 
+quit;
 
 
 %Runalg(30);

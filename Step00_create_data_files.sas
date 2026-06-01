@@ -60,7 +60,7 @@ TABLE OF CONTENTS:
 *Run setup macro and define libnames;
 options sasautos=(SASAUTOS "/local/projects/marketscan_preg/raw_data/programs/macros");
 /*change "saveLog=" to "Y" when program is closer to complete*/
-%setup(sample= random1pct, programname=Step00_create_data_files, savelog=N);
+%setup(sample= full, programname=cdwh_algorithm/Step00_create_data_files, savelog=Y);
 
 options mprint;
 
@@ -73,8 +73,8 @@ options mprint;
 /*libname ltemp slibref = temp server=server;*/
 
 *Specify all of the years that we want to get raw claim data from;
-%let years = 2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2023;
-%let years_icd10 = 2015 2016 2017 2018 2019 2020 2021 2022 2023 2023; *Specify only those years in the ICD-10 era;
+%let years = 2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2023 2024;
+%let years_icd10 = 2015 2016 2017 2018 2019 2020 2021 2022 2023 2023 2024; *Specify only those years in the ICD-10 era;
 
 
 

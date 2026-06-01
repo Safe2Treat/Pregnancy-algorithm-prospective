@@ -42,6 +42,8 @@ NOTE: Be sure to comment in or out the algorithms that you intend to run.
 ***                                                                                             *
 ***     - 08.05.24: sph - point to libraryoptions file, remove _codeprenatal_meg datastep and   *
 ***                  call permanent dataset codeprenatal_meg (removed commented out code)       *
+***     - 05.14.26: bz - added a delete procedure to remove temporary files in the work library *
+***				     to save space: %combineresults, %PDO_Updt, %OGP_Updt                       *
 ************************************************************************************************/ 
 
 
@@ -85,7 +87,7 @@ TABLE OF CONTENTS
 *Run setup macro and define libnames;
 options sasautos=(SASAUTOS "/local/projects/marketscan_preg/raw_data/programs/macros");
 /*change "saveLog=" to "Y" when program is closer to complete*/
-%setup(sample= random1pct, programname=Steps3thru10___PregnancyOutcomes_ComplexorSimple, savelog=N);
+%setup(sample= full, programname=Steps3thru10___PregnancyOutcomes_ComplexorSimple, savelog=Y);
 
 /*options mprint;*/
 
@@ -178,7 +180,7 @@ These will be used to execute steps 3-10.
 
 *These are the primary macros to be included;
 
-%inc "&AlgPath./Steps3thru10_Macros_file1.sas"  ;
+%inc "&AlgPath./Steps3thru10_Macros_file1_test.sas"  ;
 
 **Macros for defining pregnancies through complex version of Step 8 **;
 %inc "&algPath./Steps3thru10_Macros_file3_Step8Complex.sas"  ;
@@ -196,7 +198,7 @@ These will be used to execute steps 3-10.
  */;
 
 
-%inc "&AlgPath./Steps3thru10_Macros_file2_Step5abc.sas"  ;
+%inc "&AlgPath./Steps3thru10_Macros_file2_Step5abc_test.sas"  ;
 
 
 
@@ -569,29 +571,28 @@ option mlogic notes;
 
 %Runit(OCW= 7, Alg=1, POW=286, PRENSIMPLE=y , POSPW=140, PRENCOMPLEX=N, DAYADJ=60 ) ;
 	%delete_run_data;
-	dm 'log;clear;output;clear;';
+/*	dm 'log;clear;output;clear;';*/
 %Runit(OCW= 7, Alg=2, POW=286, PRENSIMPLE=y , POSPW=140, PRENCOMPLEX=N, DAYADJ=60 );
 	%delete_run_data;
-	dm 'log;clear;output;clear;';
+/*	dm 'log;clear;output;clear;';*/
 %Runit(OCW= 7, Alg=3, POW=286, PRENSIMPLE= y, POSPW=140, PRENCOMPLEX=N, DAYADJ=60 );
 	%delete_run_data;
-	dm 'log;clear;output;clear;';
+/*	dm 'log;clear;output;clear;';*/
 %Runit(OCW= 7, Alg=4, POW=286, PRENSIMPLE=y , POSPW=140, PRENCOMPLEX=N, DAYADJ=60 );
 	%delete_run_data;
-	dm 'log;clear;output;clear;';
+/*	dm 'log;clear;output;clear;';*/
 
 *Algorithms 1-4 assuming a 30-day window between pregnancy outcome claims;
 
 %Runit(OCW= 30, Alg=1, POW=286, PRENSIMPLE=y , POSPW=140, PRENCOMPLEX=N, DAYADJ=60 );
 	%delete_run_data;
-	dm 'log;clear;output;clear;';
+/*	dm 'log;clear;output;clear;';*/
 %Runit(OCW= 30, Alg=2, POW=286, PRENSIMPLE=y , POSPW=140, PRENCOMPLEX=N, DAYADJ=60 );
 	%delete_run_data;
-	dm 'log;clear;output;clear;';
+/*	dm 'log;clear;output;clear;';*/
 %Runit(OCW= 30, Alg=3, POW=286, PRENSIMPLE=y , POSPW=140, PRENCOMPLEX=N, DAYADJ=60 );
 	%delete_run_data;
-	dm 'log;clear;output;clear;';
+/*	dm 'log;clear;output;clear;';*/
 %Runit(OCW= 30, Alg=4, POW=286, PRENSIMPLE=y , POSPW=140, PRENCOMPLEX=N, DAYADJ=60 );
 	%delete_run_data;
-	dm 'log;clear;output;clear;';
-
+/*	dm 'log;clear;output;clear;';*/

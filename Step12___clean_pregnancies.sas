@@ -8,6 +8,9 @@ Date: 12.19.2024
 
 UDPATES:
 
+- 04.17.2026: Changed how MAX_GEST_AGE was assigned so that if equal to 307, it was assigned as the original gestational age (in days).
+Further, we revised how LMPs were assigned in those cases where the indexing prenatal claim occurred too early in gestation for 
+the assigned LMP.
 - 07.25.2025: Changed overlap to include those pregnancies that are too close for biologic plausibility. These time frames were
 chosen based upon tables in the algorithm documentation.
 - 08.19.2025: Identified and fix bug. Previously MLS was excluded from the list of pregnancy outcomes that were used to calculate 
@@ -102,8 +105,6 @@ format file locally, not on the remote submit.;
 
 
 
-
-
 /********************************************************************************************************************************************
 
 													01 - CREATE GESTAGEPREN DATASET
@@ -115,7 +116,7 @@ proc sql;
 	select distinct patient_deid, enc_date, parent_code, code, max(prenatal_enc) as Pren_GA_enc,
              preg_outcome, code_hierarchy, gestational_age_days, gest_age_wks, 
 			 case when min_gest_age = 14 then 28 else min_gest_age end as min_gest_age, /*Want the minimum gestational age associated with 1st trimester code to be 28 days, not 14*/ 
-			max_gest_age,
+			 case when max_gest_age = 307 then 301 else max_gest_age end as max_gest_age, /*CDL: 307 as max gestational age making too long of pregnancies with known outcomes*/
              zhu_test, zhu_hierarchy
     from int.gestage
     group by patient_deid, parent_code, enc_date, code, preg_outcome, code_hierarchy, 
@@ -123,8 +124,10 @@ proc sql;
 	;
     quit;
 
-
-
+/**Confirm that reset looks as expected.;*/
+/*proc means data=temp.gestagepren min max;*/
+/*	var min_gest_age max_gest_age;*/
+/*run;*/
 
 
 
@@ -183,6 +186,15 @@ INPUTS:
 %let lmpindex = 63;
 */
 
+/*data test (where = (ga_length > 43));*/
+/*set &input_data;*/
+/*	ga_length = floor((dt_gapreg - dt_lmp)/7);*/
+/*run;*/
+/*proc freq data=test;*/
+/*	table ga_length*preg_outcome_clean / missing;*/
+/*run;*/
+
+
 
 
 %macro revise_too_long(INPUT_DATA=, output_data=, LMPINDEX=, DAYS=307, round=0);
@@ -198,6 +210,13 @@ INPUTS:
 		ga_length = dt_gapreg - dt_lmp;
 		if preg_outcome_clean = "UNK" and ga_length > &DAYS then output;
 	run;
+/*	proc freq data=_pregnancies_long;*/
+/*		table LMP_AlgBased / missing;*/
+/*	run;*/
+/*	%*Run quick check that looks right.;*/
+/*	proc freq data=_pregnancies_long;*/
+/*		table preg_outcome_clean ga_length / missing;*/
+/*	run;*/
 
 /*	%*Save a proc freq output as an analytic dataset;*/
 /*	proc freq data=_pregnancies_long noprint;*/
@@ -217,6 +236,11 @@ INPUTS:
 		if LMP_AlgBased = 0 then output;
 	run;
 
+	/*
+	%let input_data = _pregnancies_long (where = (lmp_algbased = 1));
+	%let ga=min_gest_age;
+	*/
+
 	%*For the rest of the pregnancies, revise their LMP estimates using the minimum
 	gestational age indicated by a code. Prenatal care codes do not have a minimum gestational age, so they are not used.;
 	%*This macro is stored in the macros folder within programs;
@@ -229,7 +253,7 @@ INPUTS:
 	set ga_rev;
 		%*Assign the LMP so that it is not missing;
 		if lmp_algbased = 1 then dt_lmp = dt_lmp_alg;
-			else if lmp_algbased = 0 and preg_outcome_clean ne "UNK" then dt_lmp = dt_lmp_table; %*Should not be in this dataset;
+/*			else if lmp_algbased = 0 and preg_outcome_clean ne "UNK" then dt_lmp = dt_lmp_table; %*Should not be in this dataset;*/
 			else if lmp_algbased = 0 then dt_lmp = dt_indexprenatal - &lmpindex;
 
 		ga_length = dt_gapreg - dt_lmp; %*Calculate new GA length variable;
@@ -258,6 +282,10 @@ INPUTS:
 	set _pregnancies_long2;
 		where ga_length2 <= &DAYS;
 	run;
+/*	%*Confirm running as expected;*/
+/*	proc means data=_pregnancies_long2_max min max;*/
+/*		var ga_length2;*/
+/*	run;*/
 
 	%*For those pregnancies with GA information that are still too long, identify those with Z3A codes;
 
@@ -278,6 +306,14 @@ INPUTS:
 	set _pregnancies_long3 (where = (numZ3A = 0));
 		dt_lmp = dt_indexprenatal - 28;
 	run;
+/*	%*Look at the distribution of ga_length;*/
+/*	data test2;*/
+/*	set _pregnancies_long4;*/
+/*		ga_length = dt_gapreg - dt_lmp;*/
+/*	run;*/
+/*	proc means data=test2 min max;*/
+/*		var ga_length;*/
+/*	run;*/
 
 	%*For those pregnancies with an LMP based on Z3A codes, revise the indexprenatal and outcome date based on
 	all prenatal encounter dates between their LMP and &DAYS gestation;
@@ -286,7 +322,7 @@ INPUTS:
 		select distinct a.*, min(b.enc_date) as dt_indexprenatal_rev, max(b.enc_date) as dt_gapreg_rev
 		from _pregnancies_long3 (where = (numZ3A >= 1)) as a
 		left join out.codeprenatal_meg1_dts as b
-		on a.patient_deid=b.patient_deid and a.dt_lmp <= b.enc_date <=  a.dt_lmp + &days
+		on a.patient_deid=b.patient_deid and a.dt_lmp <= b.enc_date <=  a.dt_lmp + &days 
 		group by a.patient_deid, a.idxpren
 		;
 		quit;
@@ -298,31 +334,41 @@ INPUTS:
 		dt_gapreg = dt_gapreg_rev;
 		drop dt_indexprenatal_rev dt_gapreg_rev;
 	run;
+	
 
 	%*Final dataset;
 	proc sql;
 		create table pregnancies_long_rev as
-		select distinct idxpren, dt_lmp, dt_indexprenatal, dt_gapreg, 
+		select distinct patient_deid, idxpren, dt_lmp, dt_indexprenatal, dt_gapreg, 
 				1 as LMP_long_revision, "No GA codes" as LMP_long_revision_reason
 		from _pregnancies_long_noga
 		union corr
-		select distinct idxpren, dt_lmp, dt_indexprenatal, dt_gapreg, 
+		select distinct patient_deid, idxpren, dt_lmp, dt_indexprenatal, dt_gapreg, 
 				1 as LMP_long_revision, "Reasonable with min_gest_age in algorithm" as LMP_long_revision_reason
 		from _pregnancies_long_rev2_out
 		union corr
-		select distinct idxpren, dt_lmp, dt_indexprenatal, dt_gapreg, 
+		select distinct patient_deid, idxpren, dt_lmp, dt_indexprenatal, dt_gapreg, 
 				1 as LMP_long_revision, "Reasonable if use max_dt_lmp in algorithm" as LMP_long_revision_reason
 		from _pregnancies_long2_max
 		union corr
-		select distinct idxpren, dt_lmp, dt_indexprenatal, dt_gapreg, 
+		select distinct patient_deid, idxpren, dt_lmp, dt_indexprenatal, dt_gapreg, 
 				1 as LMP_long_revision, "No Z3A codes and algorithm returned too long GA" as LMP_long_revision_reason
 		from _pregnancies_long4
 		union corr
-		select distinct idxpren, dt_lmp, dt_indexprenatal, dt_gapreg,
+		select distinct patient_deid, idxpren, dt_lmp, dt_indexprenatal, dt_gapreg,
 				1 as LMP_long_revision, "Revised index or gapreg based on Z3A codes" as LMP_long_revision_reason
 		from _pregnancies_long_prenatal3
 		;
 		quit;
+
+/*	%*Confirm none too long here;*/
+/*	data test2;*/
+/*	set pregnancies_long_rev;*/
+/*		ga_length = (dt_gapreg - dt_lmp)/7;*/
+/*	run;*/
+/*	proc means data=test2 min max;*/
+/*		var ga_length;*/
+/*	run;*/
 
 	%*Join these back onto the original pregnancies;
 
@@ -330,17 +376,31 @@ INPUTS:
 	values and more easily use them later with the getGA macro;
 	proc sql;
 		create table _pregnancies_long_int as
-		select distinct a.idxpren, 
+		select distinct a.patient_deid, a.idxpren, a.preg_outcome_clean, /*CDL: ADDED a.patient_deid on 24Apr2026 to deal with those edge cases where idxpren is repeated*/
 			case when missing(b.idxpren) then a.dt_lmp else b.dt_lmp end as dt_lmp format=MMDDYY10., 
 			case when missing(b.idxpren) then a.dt_indexprenatal else b.dt_indexprenatal end as dt_indexprenatal format=MMDDYY10.,
 			case when missing(b.idxpren) then a.dt_gapreg else b.dt_gapreg end as dt_gapreg format=MMDDYY10., 
 			case when missing(b.idxpren) then 0 else 1 end as LMP_long_revision,
 			case when missing(b.idxpren) then "Not too long" else LMP_long_revision_reason end as LMP_long_revision_reason
-		from &INPUT_DATA as a
+		from &INPUT_DATA as a /*CDL: ADDED where statement on 24Apr2026 for running efficiency*/
 		left join pregnancies_long_rev as b
-		on a.idxpren = b.idxpren
+		on a.idxpren = b.idxpren and a.patient_deid = b.patient_deid /*CDL: ADDED the join on the patient_deid here on 24Apr2026.*/
 		;
 		quit;
+/*	%*Confirm none too long here;*/
+/*	data test2;*/
+/*	set _pregnancies_long_int (where = (preg_outcome_clean = "UNK"));*/
+/*		ga_length = (dt_gapreg - dt_lmp)/7;*/
+/*	run;*/
+/*	proc means data=test2 min max;*/
+/*		var ga_length;*/
+/*	run;*/
+/**/
+/*	data test3;*/
+/*	set test2;*/
+/*		where ga_length > 44;*/
+/*	run;*/
+		
 
 	%*Now, join that information onto all other information;
 	proc sql;
@@ -348,7 +408,7 @@ INPUTS:
 		select distinct a.*, b.dt_lmp, b.dt_indexprenatal, b.dt_gapreg, b.LMP_long_revision, b.LMP_long_revision_reason
 		from &INPUT_DATA (drop = dt_lmp dt_indexprenatal dt_gapreg) as a
 		left join _pregnancies_long_int as b
-		on a.idxpren = b.idxpren
+		on a.idxpren = b.idxpren and a.patient_deid = b.patient_deid /*CDL: ADDED the join on the patient_deid here on 24Apr2026.*/
 		;
 		quit;
 
@@ -402,6 +462,10 @@ INPUTS:
 - DAYS -- the minimum gestational age for the indexing prenatal encounter
 - ROUND -- used in loop to deal with overlapping pregnancies.
 
+%let days = 28;
+%let round = 0;
+%let input_data = _toolong;
+
 */
 
 %macro revise_index_before_lmp(INPUT_DATA=, output_data=, LMPINDEX=, DAYS=28, round=0);
@@ -449,7 +513,7 @@ INPUTS:
 		
 		%*Revise the LMPs based upon maximums for each outcome.;
 		if preg_outcome_clean in ("EM", "IAB", "UAB", "SAB") then dt_lmp_rev = dt_gapreg - 90;
-			else if preg_outcome_clean in ("LBM","SB","LBS","UDL") then dt_lmp_rev = dt_gapreg - 301;
+			else if preg_outcome_clean in ("LBM","SB","LBS","UDL","MLS") then dt_lmp_rev = dt_gapreg - 301; %*CDL: ADDED MLS on 09.05.2025;
 
 		%*Create an indicator as to whether the indexing prenatal encounter still occurs prior to the LMP;
 		stillshort = (. < dt_indexprenatal < dt_lmp_rev + &DAYS);
@@ -594,20 +658,67 @@ INPUTS:
 		ga_length = dt_gapreg - dt_lmp_rev;
 		toolong = ga_length > 307;
 	run;
+/*	%*CDL: Look at the outcome distributions among those that are now too long - should all be UNK.*/
+/*	This was not true with MAX_GEST_AGE values equal to 307. Now they are with the revised value.;*/
+/*	proc freq data=_pregnancies_pre_rev (where = (toolong = 1));*/
+/*		table preg_outcome_clean / missing;*/
+/*	run;*/
+/*	proc freq data=_pregnancies_pre_rev (where = (toolong = 1 and preg_outcome_clean ne "UNK"));*/
+/*		table ga_length / missing;*/
+/*	run; *Confirmed that these are 308. Not unreasonable.;*/
 
-	%*Those pregnancies that are now too long with unknown outcomes, assign them a LMP of 28 at their indexing PNC.
-	Of note, this only occurs to those with unknown outcomes.;
+	%*Those pregnancies that are now too long with unknown outcomes, assign them a LMP of 28 at their indexing PNC;
 	proc sql;
-		create table _pregnancies_pre_rev_long as
-		select distinct idxpren, dt_indexprenatal, dt_indexprenatal - 28 as dt_lmp, dt_gapreg,
-			"GA only by Prenatal Care Codes, Assumed 4w GA at index" as LMP_late_rev_reason
-		from _pregnancies_pre_alg
+		create table _pregnancies_pre_rev_long_int as
+		select distinct patient_deid, idxpren, dt_indexprenatal, dt_indexprenatal - 28 as dt_lmp, dt_gapreg,
+			"GA only by Prenatal Care Codes, Assumed 4w GA at index" as LMP_late_rev_reason,
+			dt_gapreg - calculated dt_lmp as ga_length
+		from _pregnancies_pre_alg (where = (preg_outcome_clean = "UNK")) /*CDL: ADDED where statement on 24Apr2026 to make explicit*/
 		where idxpren in (select distinct idxpren from _pregnancies_pre_rev where toolong = 1)
 		;
 		quit;
 	%*Output counts;
-	proc sql noprint; select count(*) into :num_preg_toolong from _pregnancies_pre_rev_long; quit;
+	proc sql noprint; select count(*) into :num_preg_toolong from _pregnancies_pre_rev_long_int; quit;
 	%put Number of UNK pregnancies too long after revised GA algorithm: &num_preg_toolong;
+	*Look at the distribution of gestational lengths;
+	
+	%*For those pregnancies that are still too long, revise the outcome date based on
+	all prenatal encounter dates between their LMP and &DAYS gestation;
+	proc sql;
+		create table _pregnancies_pre_rev_long_int2 as
+		select distinct a.idxpren, min(b.enc_date) as dt_indexprenatal, a.dt_lmp, max(b.enc_date) as dt_gapreg,
+			"GA by PNC Codes, Assumed 4w GA at Index, then Too long" as LMP_late_rev_reason
+		from _pregnancies_pre_rev_long_int (where = (ga_length > 307)) as a
+		left join out.codeprenatal_meg1_dts as b
+		on a.patient_deid=b.patient_deid and a.dt_indexprenatal <= b.enc_date <=  a.dt_lmp + &days 
+		group by a.patient_deid, a.idxpren
+		;
+		quit;
+
+	%*Now add the revised information onto the dataset;
+	proc sql;
+		create table _pregnancies_pre_rev_long as
+		select a.idxpren, case when b.idxpren ne . then b.dt_indexprenatal else a.dt_indexprenatal end as dt_indexprenatal,
+				a.dt_lmp, case when b.idxpren ne . then b.dt_gapreg else a.dt_gapreg end as dt_gapreg,
+				case when b.idxpren ne . then b.LMP_late_rev_reason else a.LMP_late_rev_reason end as LMP_late_rev_reason
+		from _pregnancies_pre_rev_long_int as a
+		left join _pregnancies_pre_rev_long_int2 as b
+		on a.idxpren = b.idxpren
+		;
+		quit;
+/*	%*Confirm merged on correctly;*/
+/*	proc freq data=_pregnancies_pre_rev_long;*/
+/*		table LMP_late_rev_reason / missing;*/
+/*	run;*/
+/*	%*Look at the gestational length distribution;*/
+/*	data test2;*/
+/*	set _pregnancies_pre_rev_long;*/
+/*		ga_length = (dt_gapreg - dt_lmp) / 7;*/
+/*	run;*/
+/*	proc means data=test2;*/
+/*		var ga_length;*/
+/*	run;*/
+
 
 	%*Review those pregnancies now with revised LMPs. Now need to deal with those where index prenatal is still prior to LMP;
 	data _pregnancies_pre_rev2;
@@ -615,6 +726,10 @@ INPUTS:
 		where toolong = 0;
 		indexearly = (. < dt_indexprenatal < dt_lmp_rev + &DAYS);
 	run;
+/*	%*Look at the outcome distribution;*/
+/*	proc freq data=_pregnancies_pre_rev2 (where = (indexearly = 1));*/
+/*		table preg_outcome_clean / missing;*/
+/*	run;*/
 
 	%*Output those pregnancies where the index is not prior to the LMP anymore;
 	proc sql;
@@ -688,7 +803,7 @@ INPUTS:
 
 
 	%*Identify those that still have an indexing prenatal prior to their LMP. These will be linked to their 
-	prenatal care encounters to determinen if they have recorded Z3A codes;
+	prenatal care encounters to determine if they have recorded Z3A codes;
 	data _pregnancies_pre_z3a;
 	set _pregnancies_pre_rev3;
 		where indexearly2 = 1;
@@ -725,15 +840,24 @@ INPUTS:
 		group by idxpren
 		;
 		quit;
+/*	%*Look at the outcome distribution among those with 0Z3A codes;*/
+/*	proc freq data=_pregnancies_pre_pnc2;*/
+/*		where numZ3A = 0;*/
+/*		table preg_outcome_clean / missing;*/
+/*	run;*/
+/*	%*Majority but not all were UNK;*/
 
-	%*Those with 0 Z3A codes will be assigned a gestational age by assuming that they were 4w0d
+	%*CDL: REVISED THIS STEP 2026Apr17. Assigned LMP as 4 weeks prior to the indexing date did not make sense for
+	pregnancies with known outcomes and was resulting in odd values.;
+
+	%*Those with 0 Z3A codes AND UNK OUTCOMES (CDL: ADDED) will be assigned a gestational age by assuming that they were 4w0d
 	gestation at their indexing prenatal encounter;
 	proc sql;
 		create table _pregnancies_pre_noZ3A as
 		select distinct idxpren, dt_indexprenatal, dt_indexprenatal - 28 as dt_lmp, dt_gapreg, preg_outcome_clean,
 			"No Specific GA codes, so assumed GA of 4W at indexing PNC" as LMP_late_rev_reason
 		from _pregnancies_pre_pnc2
-		where numZ3A = 0;
+		where numZ3A = 0 and preg_outcome_clean = "UNK"; /*CDL: ADDED where statement. 2026Apr17*/
 		quit;
 	%*Output count;
 	proc sql noprint; 
@@ -756,13 +880,15 @@ INPUTS:
 	%put Number of UAB: &num_UAB;
 	%put Number of UNK: &num_UNK;
 
-	%*Those with at least 1 Z3A code. Grab all the prenatal encounter dates between their max LMP and
-	the outcome date.;
+	%*Those with at least 1 Z3A code or a known outcomes. Grab all the prenatal encounter dates between their max LMP and
+	the outcome date. Assume the LMP is right from the MAX_GEST_AGE and assign the new indexing prenatal claim date 
+	accordingly.;
+	%*CDL: ADDED 2026Apr17. Now include pregnancies with known outcomes in this step, regardless of the number of Z3A codes;
 	proc sql;
 		create table _pregnancies_pre_Z3A as
 		select distinct a.idxpren,  min(b.enc_date) as dt_indexprenatal, dt_lmp_alg as dt_lmp, a.dt_gapreg, preg_outcome_clean,
-			"At least 1 Specific GA code, revised the date of the indexing PNC" as LMP_late_rev_reason
-		from _pregnancies_pre_pnc2 (where = (numZ3A > 0)) as a
+			"At least 1 Specific GA code or known outcome, revised the date of the indexing PNC" as LMP_late_rev_reason
+		from _pregnancies_pre_pnc2 (where = (numZ3A > 0 or preg_outcome_clean ne "UNK")) as a /*CDL: ADDED or preg_outcome_clean ne UNk on 4.17.2026.*/
 		left join out.codeprenatal_meg1_dts as b
 		on a.patient_deid=b.patient_deid and a.dt_lmp_alg+&days <= b.enc_date <= a.dt_gapreg /*CDL: ADDED +&days to min 1.24.2025 based on error identified by MGP*/
 		group by idxpren, dt_indexprenatal, dt_lmp, dt_gapreg, preg_outcome_clean
@@ -1890,8 +2016,8 @@ This outputs one long, stacked dataset.;
 */
 
 %let algorithm=%str(7-1 7-2 7-3 7-4 30-1 30-2 30-3 30-4);
-/*%let algorithm=%str(7-1 7-2);*/
-
+/*%let algorithm=%str(30-1 30-2 30-3 30-4);*/
+/*%let algorithm=%str(30-1);*/
 
 %macro clean(pregnancies=out.pregnancy_lmp_simp_all, output_pregnancies=out.pregnancy_lmp_simp_all_clean);
 
@@ -1930,6 +2056,55 @@ This outputs one long, stacked dataset.;
 
 
 
+
+
+
+
+/*TESTING*/
+
+/*data test2;*/
+/*set out.pregnancy_lmp_simp_all_clean;*/
+/*	ga_length_continuous = (dt_gapreg-dt_lmp)/7;*/
+/*	ga_length = floor((dt_gapreg-dt_lmp)/7);*/
+/*	if preg_outcome_clean = "UNK" then outcome_type = "Unknown";*/
+/*		else outcome_type = "Known";*/
+/*run;*/
+/*proc freq data=test2 (where = (ga_length > 44));*/
+/*	table preg_outcome_clean * ga_length / missing;*/
+/*run;*/
+/*proc means data=test2 min p10 p25 p50 p75 p90 max nmiss;*/
+/*	class preg_outcome_clean;*/
+/*	var ga_length;*/
+/*run;*/
+/**/
+/**Look at the true GAs for those with ga_length = 44;*/
+/*proc freq data=test2 (where = (ga_length > 43));*/
+/*	table ga_length_continuous;*/
+/*run;*/
+/**/
+/**Look at the LMP_late_rev breakdown;*/
+/*proc freq data=test (where = (ga_length > 43));*/
+/*	table LMP_late_rev*outcome_type LMP_late_rev_reason*outcome_type / missing;*/
+/*run;*/
+
+
+/**/
+/**Look at LMP long revision;*/
+/*proc freq data=test (where = (ga_length > 43));*/
+/*	table LMP_long_revision*outcome_type LMP_long_revision_reason*outcome_type / missing;*/
+/*run; **All of the UNK not flagged as too long, even though some still are;*/
+/**/
+/*data test;*/
+/*set out.pregnancy_lmp_simp_all_clean;*/
+/*	ga_length = floor((dt_gapreg-dt_lmp)/7);*/
+/*run;*/
+/*proc freq data=test ;*/
+/*	table preg_outcome_clean ga_length / missing;*/
+/*run;*/
+/**/
+/*proc freq data=test (where = (ga_length > 44));*/
+/*	table preg_outcome_clean*ga_length / missing;*/
+/*run;*/
 
 /*proc freq data=temp.preg_lmp_simp_all_clean_orig;*/
 /*	table preg_outcome_clean / missing;*/
@@ -1984,3 +2159,4 @@ This outputs one long, stacked dataset.;
 /*	class preg_outcome_clean;*/
 /*	var ga_length;*/
 /*run;*/
+;;;

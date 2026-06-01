@@ -133,12 +133,19 @@ INPUTS:
         		dt_gapreg - (calculated gest_age_table) as Dt_LMP_table 
 
       	from pregs  a 
-		left join temp.GESTAGEPren(where = (&ga ne .)) b  /*Gestational age encounters rolled up on the encounter date level - created in running file.*/
+		left join temp.GESTAGEPren(where = (&ga ne . and parent_code ne 1)) b  /*Gestational age encounters rolled up on the encounter date level - created in running file.*/
 				/*Exclude those rows where the gestational age associated with a code is not defined.*/
 		on a.patient_deid=b.patient_deid /*Grabbing all GA encounters for anyone with a pregnancy*/
-      	where parent_code NE 1   /*exclude GA enc with parent codes (1) - keeps child (0) and no ga-enc recs (.)*/
+		/*CDL: REVISED 24Apr2026. Moved this parent code excludsion to apply directly to temp.gestagepren. This current placement was causing pregnancy records
+		to be dropped from the dataset if they had only parent codes.*/
+      	/*where parent_code NE 1*/   /*exclude GA enc with parent codes (1) - keeps child (0) and no ga-enc recs (.)*/
       	group by a.patient_deid, a.idxpren;
     	quit;
+/*	%*Confirm no pregnancies lost.;*/
+/*	proc sql;*/
+/*		select count(distinct idxpren) as n_preg*/
+/*		from anygaenc;*/
+/*		quit;*/
 
     **for later list of pregids to update;
 	proc sql;

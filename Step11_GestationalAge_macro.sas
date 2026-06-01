@@ -11,6 +11,8 @@ MODIFICATIONS:
         06.18.24 - sph correct to use preg_outcome_clean from the source pregnancy dsn (lines 46-66)
                    and change the macro to use Preg_outcome_CLEAN instead of Preg_Outcome
     -   07.21.24 - SPH add macvar PODS to account for simple and complex prenatal-only datasets
+	- 	04.24.26 - CDL revised how parent codes were deleted in the anyGAenc dataset so that pregnancies
+					were not deleted.
 
 **********************************************************************************************************/
 
@@ -173,9 +175,12 @@ MODIFICATIONS:
         		dt_gapreg - (calculated gest_age_table) as Dt_LMP_table 
 
       	from pregs_&pods.  a 
-		left join GESTAGEPren b  /*Gestational age encounters rolled up on the encounter date level - created in running file.*/
+			/*CDL: 24Apr2026. Moved where statement for parent codes to this line*/
+		left join GESTAGEPren (where = (parent_code NE 1)) b  /*Gestational age encounters rolled up on the encounter date level - created in running file.*/
 		on a.patient_deid=b.patient_deid /*Grabbing all GA encounters for anyone with a pregnancy*/
-      	where parent_code NE 1   /*exclude GA enc with parent codes (1) - keeps child (0) and no ga-enc recs (.)*/
+		/*CDL: REVISED 24Apr2026. Moved this parent code excludsion to apply directly to temp.gestagepren. This current placement was causing pregnancy records
+		to be dropped from the dataset if they had only parent codes.*/
+      	/*where parent_code NE 1*/   /*exclude GA enc with parent codes (1) - keeps child (0) and no ga-enc recs (.)*/
       	group by a.patient_deid, a.idxpren;
     	quit;
 

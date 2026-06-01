@@ -60,7 +60,7 @@ TABLE OF CONTENTS:
 *Run setup macro and define libnames;
 options sasautos=(SASAUTOS "/local/projects/marketscan_preg/raw_data/programs/macros");
 /*change "saveLog=" to "Y" when program is closer to complete*/
-%setup(sample= random1pct, programname=Step11___PregPlusLMP, savelog=N);
+%setup(sample= full, programname=Step11___PregPlusLMP, savelog=Y);
 
 options mprint;
 
