@@ -1,0 +1,8 @@
+{
+  "bundle": "t003_split_concordant_macro",
+  "source_file": "Step1and2_1b_AssignAllConcordanceFlagMacro.sas",
+  "source_blob_sha": "6743a9e9c399a17263243e22a7a73b56670f70a9",
+  "source_commit": "248b65b6797b83ad9da305d1a47bef0c31d11dc9",
+  "tier": "real_data",
+  "notes": "The repo's concordance-flag macro file verbatim (%conctbl table-1 concordance helper and the %SplitConcordant driver, which uses an array over outcome types, vname(), substr/cat/max on the DX/PR/RX indicator strings, and a multi-output DATA step). autoexec supplies a small mock OutcomeGroups_30 dataset matching the column shape the macro reads; script.sas calls %SplitConcordant and prints the resolved concordant set and the algorithm-bound discordant set. Exercises the nested-macro concordance logic, including the special UAB-by-medication exclusion. Mock data is illustrative; no real claims data."
+}

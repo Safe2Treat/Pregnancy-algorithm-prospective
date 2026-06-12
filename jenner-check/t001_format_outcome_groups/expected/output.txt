@@ -1,0 +1,24 @@
+
+               OUTCOME  ABBR    CLASS_  CODE  CODETYPE  ANYFLAG
+----------------------  ----  --------  ----  --------  -------
+Live Birth (Singleton)  LBS   Delivery  100   DX        Yes
+Mixed Delivery          MLS   Delivery  110   PR        Yes
+Stillbirth              SB    Delivery  010   PR        Yes
+Spontaneous Abortion    SAB   Abortion  001   RX        Yes
+Unspecified Abortion    UAB   Abortion  011   PR        Yes
+Ectopic/Molar           EM    Ectopic   000   None      No
+
+                                                   The FREQ Procedure
+
+class_      Frequency    Percent
+---------------------------------
+Abortion            2     33.33
+Delivery            3     50.00
+Ectopic             1     16.67
+
+codetype    Frequency    Percent
+---------------------------------
+DX                  1     16.67
+None                1     16.67
+PR                  3     50.00
+RX                  1     16.67

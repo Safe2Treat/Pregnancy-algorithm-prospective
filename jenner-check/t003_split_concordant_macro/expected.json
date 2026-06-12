@@ -1,0 +1,18 @@
+{
+  "_captured_at": "2026-06-12T13:26:40.262654+00:00",
+  "_captured_run_id": "r_019ebc02da637d428526037203c606b2",
+  "status": "ok",
+  "exit_code": 0,
+  "log_contains": [
+    "NOTE: Multi-output DATA step splits stream into: Conc_OutcomeGroups_30 Disc_OutcomeGroups_30 Conc_OutcomeGroups_30disc",
+    "NOTE: PROC FREQ statement used."
+  ],
+  "log_does_not_contain": [
+    "ERROR:",
+    "[JENNER-ERROR"
+  ],
+  "diagnostics": {
+    "parse_warnings": [],
+    "runtime_warnings": []
+  }
+}

@@ -1,0 +1,8 @@
+
+PATIENT_DEID  CONCORDANT  DISCORDANT1  OUTCOME_ASSIGNED1  OUTCOME_CLASS_ASSIGNED1  CLASS_CHECK
+------------  ----------  -----------  -----------------  -----------------------  -----------
+P0001                  1            0  LBS                Delivery                 Delivery
+P0002                  1            0  SAB                Abortion                 Abortion
+P0003                  0            1  LBS                Delivery                 Delivery
+P0004                  0            1  SAB                Abortion                 Abortion
+

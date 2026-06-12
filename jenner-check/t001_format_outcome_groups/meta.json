@@ -1,0 +1,8 @@
+{
+  "bundle": "t001_format_outcome_groups",
+  "source_file": "FormatStatements.sas",
+  "source_blob_sha": "dcab625c9aa4812000e8b7f59baa1431bde710d6",
+  "source_commit": "248b65b6797b83ad9da305d1a47bef0c31d11dc9",
+  "tier": "real_data",
+  "notes": "The repo's FormatStatements.sas verbatim (16 PROC FORMAT value definitions for pregnancy-outcome abbreviations, classes, and DX/PR/RX indicator codes), plus a small DATA step that maps a handful of outcome strings and indicator codes through the $outabbr/$outclass/$outcd/$outcyn formats via PUT() and summarizes the result with PROC FREQ. No external data needed."
+}

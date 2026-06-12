@@ -1,0 +1,19 @@
+{
+  "_captured_at": "2026-06-12T13:32:00.942528+00:00",
+  "_captured_run_id": "r_019ebc07d6f47212a8b14d478b59436c",
+  "status": "ok",
+  "exit_code": 0,
+  "log_contains": [
+    "NOTE: Table anyga_estlmps created.",
+    "NOTE: PROC SQL statement used.",
+    "NOTE: PROC PRINT completed: 3 observations printed, 7 variables"
+  ],
+  "log_does_not_contain": [
+    "ERROR:",
+    "[JENNER-ERROR"
+  ],
+  "diagnostics": {
+    "parse_warnings": [],
+    "runtime_warnings": []
+  }
+}

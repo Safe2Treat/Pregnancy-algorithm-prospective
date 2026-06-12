@@ -1,0 +1,20 @@
+{
+  "_captured_at": "2026-06-12T13:05:46.126844+00:00",
+  "_captured_run_id": "r_019ebbefd5b0726191cd00b020287253",
+  "status": "ok",
+  "exit_code": 0,
+  "log_contains": [
+    "NOTE: Wrote OutcomeGroups_30_Alg1 (4 rows, 22 columns).",
+    "NOTE: Read 2 rows from Conc_OutcomeGroups_30.",
+    "NOTE: Read 4 rows from Disc_OutcomeGroups_30.",
+    "NOTE: PROC PRINT completed: 4 observations printed, 6 variables"
+  ],
+  "log_does_not_contain": [
+    "ERROR:",
+    "[JENNER-ERROR"
+  ],
+  "diagnostics": {
+    "parse_warnings": [],
+    "runtime_warnings": []
+  }
+}
