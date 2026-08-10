@@ -1,0 +1,46 @@
+Jenner 0.1.0 (Unlicensed - limited to 100 observations)
+Get a license at https://jenneranalytics.com/license
+
+NOTE: Option OBS changed to 100.
+NOTE: PROC FORMAT library=WORK
+
+NOTE: FORMAT $outabbr defined (11 ranges).
+NOTE: FORMAT $outclass defined (10 ranges).
+NOTE: FORMAT $outcyn defined (8 ranges).
+NOTE: FORMAT $outcynn defined (16 ranges).
+NOTE: FORMAT $outcdm defined (21 ranges).
+NOTE: FORMAT $outcd defined (16 ranges).
+NOTE: FORMAT $outcdrxoverdx defined (16 ranges).
+NOTE: FORMAT $outcddx defined (9 ranges).
+NOTE: FORMAT $outcdpr defined (9 ranges).
+NOTE: FORMAT $outcdrx defined (13 ranges).
+NOTE: FORMAT $outcdrxb defined (13 ranges).
+NOTE: PROC FORMAT library=WORK
+
+NOTE: FORMAT discord3alg defined (3 ranges).
+NOTE: FORMAT discord4alg defined (4 ranges).
+NOTE: PROC FORMAT library=WORK
+
+NOTE: FORMAT outdtasgn defined (14 ranges).
+NOTE: DATA outcome_demo
+
+
+NOTE: Wrote outcome_demo (6 rows, 6 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: DATA outcome_mapped
+
+
+NOTE: Read 6 rows from outcome_demo.
+NOTE: Wrote outcome_mapped (6 rows, 6 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: PROC PRINT data=outcome_mapped
+
+NOTE: PROC PRINT completed: 6 observations printed, 6 variables
+NOTE: PROC FREQ
+NOTE: ODS plot written: freq_class_.spec.json
+NOTE: ODS plot written: freq_codetype.spec.json
+NOTE: PROC FREQ statement used.

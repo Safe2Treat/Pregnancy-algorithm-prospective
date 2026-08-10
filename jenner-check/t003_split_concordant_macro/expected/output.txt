@@ -1,0 +1,16 @@
+
+PATIENT_DEID  OUTCOMEGRP  CONCORDANT  OUTCOME_CONCORDANT  OUTCOME_CONCORDANT_CODETYPE
+------------  ----------  ----------  ------------------  ---------------------------
+P0001         G001                 1  LBS                 100
+P0002         G002                 1  LBS                 110
+
+PATIENT_DEID  OUTCOMEGRP  CONCORDANT  OUTCOME_CONCORDANT
+------------  ----------  ----------  ------------------
+P0003         G003                 0  not
+P0004         G004                 0  not
+
+                                                   The FREQ Procedure
+
+Outcome_Concordant    Frequency    Percent
+-------------------------------------------
+LBS                           2    100.00

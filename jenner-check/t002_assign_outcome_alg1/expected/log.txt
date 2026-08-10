@@ -1,0 +1,41 @@
+Jenner 0.1.0 (Unlicensed - limited to 100 observations)
+Get a license at https://jenneranalytics.com/license
+
+NOTE: Option OBS changed to 100.
+NOTE: PROC FORMAT library=WORK
+
+NOTE: FORMAT $outclass defined (10 ranges).
+NOTE: DATA Conc_OutcomeGroups_30
+
+
+NOTE: Wrote Conc_OutcomeGroups_30 (2 rows, 17 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: DATA Disc_OutcomeGroups_30
+
+
+NOTE: Wrote Disc_OutcomeGroups_30 (2 rows, 17 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: DATA OutcomeGroups_30_Alg1
+
+
+NOTE: Read 2 rows from Conc_OutcomeGroups_30.
+NOTE: Read 4 rows from Disc_OutcomeGroups_30.
+NOTE: Wrote OutcomeGroups_30_Alg1 (4 rows, 22 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: DATA alg1_check
+
+
+NOTE: Read 4 rows from OutcomeGroups_30_Alg1.
+NOTE: Wrote alg1_check (4 rows, 23 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: PROC PRINT data=alg1_check
+
+NOTE: PROC PRINT completed: 4 observations printed, 6 variables

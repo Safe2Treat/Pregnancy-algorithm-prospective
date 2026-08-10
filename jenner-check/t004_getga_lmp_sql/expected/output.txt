@@ -1,0 +1,7 @@
+
+PATIENT_DEID  PREG_OUTCOME_CLEAN   DT_GAENC  DAYS_PREGTOGAENC     DT_LMP  GEST_AGE_TABLE  DT_LMP_TABLE
+------------  ------------------  ---------  ----------------  ---------  --------------  ------------
+P0001         LBS                 01JUN2023                14  04SEP2022             273     15SEP2022
+P0001         LBS                 20JUN2023                -5  13SEP2022             273     15SEP2022
+P0002         SAB                 05MAR2023                 5  29DEC2022              70     30DEC2022
+

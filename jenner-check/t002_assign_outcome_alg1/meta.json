@@ -1,0 +1,8 @@
+{
+  "bundle": "t002_assign_outcome_alg1",
+  "source_file": "Step1and2_1b_AssignOutcome_Algorithm1.sas",
+  "source_blob_sha": "791b81347e4134bdacc4e4ce32822db7a8b841b8",
+  "source_commit": "248b65b6797b83ad9da305d1a47bef0c31d11dc9",
+  "tier": "real_data",
+  "notes": "The repo's Algorithm-1 outcome-assignment DATA step verbatim. autoexec supplies the $outclass format (from FormatStatements.sas), the &NewDsn/&concdsn/&discdsn macro variables the driver sets, and small mock concordant/discordant pregnancy-outcome-group datasets matching the column shape the step reads (3-digit DX/PR/RX indicator strings per outcome type LBM..AEM plus Delivery/Abortion/Ectopic rollups and the concordance fields). Exercises the array + vname() outcome-hierarchy loop and the $outclass format mapping. Mock data is illustrative; no real claims data."
+}

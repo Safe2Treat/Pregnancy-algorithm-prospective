@@ -1,0 +1,8 @@
+{
+  "bundle": "t004_getga_lmp_sql",
+  "source_file": "getga.sas",
+  "source_blob_sha": "e2ac49f2649a45440a810941271f3ac443b85dca",
+  "source_commit": "248b65b6797b83ad9da305d1a47bef0c31d11dc9",
+  "tier": "real_data",
+  "notes": "LMP-estimation PROC SQL pattern adapted from getga.sas (%getga). Computes, per gestational-age encounter, the days between pregnancy outcome and encounter, an estimated LMP via a CASE on the day gap (follow-up vs pre-outcome), and an outcome-keyed gestational-age-table LMP. The CASE expressions, calculated-column references, date arithmetic, left join and the gestational-age lookup table are the repo's, unchanged; display-only column LABELs were omitted (FORMAT= retained). autoexec supplies small mock pregs/ga_enc datasets matching the shape the query reads. Mock data is illustrative; no real claims data. Computed LMP values were hand-verified against the day arithmetic."
+}
