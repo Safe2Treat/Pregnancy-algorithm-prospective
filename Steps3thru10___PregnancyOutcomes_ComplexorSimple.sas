@@ -180,7 +180,7 @@ These will be used to execute steps 3-10.
 
 *These are the primary macros to be included;
 
-%inc "&AlgPath./Steps3thru10_Macros_file1_test.sas"  ;
+%inc "&AlgPath./Steps3thru10_Macros_file1.sas"  ;
 
 **Macros for defining pregnancies through complex version of Step 8 **;
 %inc "&algPath./Steps3thru10_Macros_file3_Step8Complex.sas"  ;
@@ -198,7 +198,7 @@ These will be used to execute steps 3-10.
  */;
 
 
-%inc "&AlgPath./Steps3thru10_Macros_file2_Step5abc_test.sas"  ;
+%inc "&AlgPath./Steps3thru10_Macros_file2_Step5abc.sas"  ;
 
 
 

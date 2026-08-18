@@ -504,6 +504,12 @@ encounter and Dt_PregnancyEnd cannot be a new index.
               	;
             	QUIT;
 
+			/*Delete the datasets that no longer need - keep the work library less cluttered.*/
+		    proc datasets lib=work nolist;
+		     	delete PRENATALDATES_OUTC_%eval(&NUM. - 1);
+		    quit;
+
+
 /*	*CDL coded for testing and go the same results;*/
 /**/
 /*	*First, identify those prenatal encounters that have no outcome and all subsequent need to be dealt with - TBD;*/
@@ -562,7 +568,7 @@ encounter and Dt_PregnancyEnd cannot be a new index.
 /*	proc freq data=PRENATALDATES_OUTC_%eval(&NUM.);*/
 /*		table status_1;*/
 /*	run;*/
-;;;
+;
 
 
 %Mend;
@@ -778,6 +784,13 @@ included in an identified pregnancy.
                 ON SA.Patient_deid = SB.Patient_deid And SA.outcomegrp = SB.outcomegrp
               	;
             	QUIT;
+			
+			/*Delete the datasets that no longer need - keep the work library less cluttered.*/
+		    proc datasets lib=work nolist;
+		     	delete outcomeassigned_pren_%eval(&NUM. - 1);
+		    quit;
+
+
 
 /*     proc freq data=outcomeassigned_pren_&num; table result_%eval(&num.-1) * result_&num./list missing;*/
 /*     run;*/

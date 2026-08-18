@@ -200,7 +200,7 @@ INPUT: None
 
 	/*Delete the datasets that no longer need - keep the work library less cluttered.*/
     proc datasets lib=work nolist;
-     *	delete %do i=1 %to &max.; r&i._:  %end; ipo_: ;
+     	delete %do i=1 %to &max.; r&i._:  %end; ipo_: ;
     quit;
 
 %mend;
